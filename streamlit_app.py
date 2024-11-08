@@ -5,6 +5,32 @@ import pandas as pd
 import yfinance as yf
 from datetime import datetime
 
+# Custom CSS for changing background color and other styles
+def apply_custom_css():
+    st.markdown(
+        """
+        <style>
+        /* Background color */
+        .main {
+            background-color: #f0f4f8;
+        }
+        /* Change font color */
+        h1, h2, h3, h4, h5, h6 {
+            color: #1f2e3d;
+        }
+        .stTextInput > div > div > input {
+            background-color: #ffffff;
+        }
+        /* Streamlit widgets styling */
+        .stSelectbox, .stDateInput, .stButton {
+            border: 1px solid #0e76a8;
+            color: #0e76a8;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
 # Function to fetch stock data with caching
 @st.cache_data
 def get_stock_data(stock_symbol, start_date, end_date):
@@ -47,11 +73,14 @@ def create_stock_graph(stock_data, short_sma, long_sma, title):
             ),
             rangeslider=dict(visible=False),
             type="date"
-        )
+        ),
+        plot_bgcolor='#f5f5f5',
+        paper_bgcolor='#f0f4f8',
+        font=dict(color='#1f2e3d')
     )
 
     # Add traces for stock prices and SMAs
-    fig.add_trace(go.Scatter(x=stock_data.index, y=stock_data.values, mode='lines', name=title))
+    fig.add_trace(go.Scatter(x=stock_data.index, y=stock_data.values, mode='lines', name=title, line=dict(color="#007acc")))
     fig.add_trace(go.Scatter(x=short_sma.index, y=short_sma.values, mode='lines', name='20-day SMA', line=dict(color="#20fc03")))
     fig.add_trace(go.Scatter(x=long_sma.index, y=long_sma.values, mode='lines', name='200-day SMA', line=dict(color="#fc0303")))
 
@@ -67,6 +96,9 @@ def create_stock_graph(stock_data, short_sma, long_sma, title):
 
 # Main Streamlit app
 def main():
+    # Apply custom CSS for background color
+    apply_custom_css()
+
     st.title("📈 Stocks Dashboard")
 
     # List of popular stock symbols
@@ -78,6 +110,7 @@ def main():
     start_date = st.sidebar.date_input("Start Date", value=datetime.now().date().replace(year=datetime.now().year - 3))
     end_date = st.sidebar.date_input("End Date", value=datetime.now().date())
 
+    # Validate date range
     if start_date >= end_date:
         st.error("Start date must be before end date.")
         return
