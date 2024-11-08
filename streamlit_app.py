@@ -8,11 +8,15 @@ from datetime import datetime
 # Function to fetch stock data with caching
 @st.cache_data
 def get_stock_data(stock_symbol, start_date, end_date):
-    stock_data = yf.download(stock_symbol, start=start_date, end=end_date)
-    if not stock_data.empty:
-        return stock_data['Adj Close']
-    else:
-        st.warning(f"No data found for {stock_symbol}. Please check the symbol.")
+    try:
+        stock_data = yf.download(stock_symbol, start=start_date, end=end_date)
+        if not stock_data.empty:
+            return stock_data['Adj Close']
+        else:
+            st.warning(f"No data found for {stock_symbol}.")
+            return None
+    except Exception as e:
+        st.error(f"Error fetching data: {e}")
         return None
 
 # Function to calculate simple moving averages (SMAs)
@@ -23,6 +27,10 @@ def calculate_sma(stock_data, short_window=20, long_window=200):
 
 # Function to create an interactive graph with SMAs
 def create_stock_graph(stock_data, short_sma, long_sma, title):
+    if stock_data is None or stock_data.empty:
+        st.error("No data available for plotting.")
+        return None
+
     fig = make_subplots(rows=1, cols=1, shared_xaxes=True, subplot_titles=[title])
 
     # Add range selector buttons
@@ -43,14 +51,17 @@ def create_stock_graph(stock_data, short_sma, long_sma, title):
     )
 
     # Add traces for stock prices and SMAs
-    fig.add_trace(go.Scatter(x=stock_data.index, y=stock_data.values, mode='lines', name=title), row=1, col=1)
-    fig.add_trace(go.Scatter(x=short_sma.index, y=short_sma.values, mode='lines', name='20-day SMA', line=dict(color="#20fc03")), row=1, col=1)
-    fig.add_trace(go.Scatter(x=long_sma.index, y=long_sma.values, mode='lines', name='200-day SMA', line=dict(color="#fc0303")), row=1, col=1)
+    fig.add_trace(go.Scatter(x=stock_data.index, y=stock_data.values, mode='lines', name=title))
+    fig.add_trace(go.Scatter(x=short_sma.index, y=short_sma.values, mode='lines', name='20-day SMA', line=dict(color="#20fc03")))
+    fig.add_trace(go.Scatter(x=long_sma.index, y=long_sma.values, mode='lines', name='200-day SMA', line=dict(color="#fc0303")))
 
-    # Update axis labels
-    fig.update_layout(title_text=title)
-    fig.update_xaxes(title_text='Date', row=1, col=1)
-    fig.update_yaxes(title_text='Price', row=1, col=1)
+    # Update layout
+    fig.update_layout(
+        title_text=title,
+        xaxis_title='Date',
+        yaxis_title='Price',
+        height=600
+    )
 
     return fig
 
@@ -76,7 +87,7 @@ def main():
 
     # Fetch stock data
     stock_data = get_stock_data(stock_symbol, start_date, end_date)
-    
+
     if stock_data is not None:
         # Calculate Simple Moving Averages (SMAs)
         short_sma, long_sma = calculate_sma(stock_data)
@@ -84,9 +95,11 @@ def main():
         # Display only the last year of data
         stock_data_last_year = stock_data.tail(252)
         short_sma_last_year, long_sma_last_year = short_sma.tail(252), long_sma.tail(252)
-        
+
         # Plot the graph
-        st.plotly_chart(create_stock_graph(stock_data_last_year, short_sma_last_year, long_sma_last_year, title=stock_symbol))
+        fig = create_stock_graph(stock_data_last_year, short_sma_last_year, long_sma_last_year, title=stock_symbol)
+        if fig:
+            st.plotly_chart(fig, use_container_width=True)
 
 if __name__ == "__main__":
     main()
