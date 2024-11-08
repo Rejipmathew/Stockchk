@@ -3,4 +3,4 @@ yfinance
 yfinance
 pandas
 plotly
-appdirs
+datetime
